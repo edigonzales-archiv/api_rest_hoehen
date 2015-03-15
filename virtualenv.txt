@@ -1,0 +1,17 @@
+http://usrnotes.blogspot.ch/2014/06/python-development-environment-setup-in.html
+https://nextdime.wordpress.com/2014/07/03/how-to-set-up-python-development-environment-ubuntu-14-04/
+
+
+sudo apt-get install python-pip
+sudo pip install virtualenv virtualenvwrapper
+
+
+# .bashrc
+if [ -f /usr/local/bin/virtualenvwrapper.sh ]; then
+    export WORKON_HOME=$HOME/.virtualenvs
+    source /usr/local/bin/virtualenvwrapper.sh
+fi
+
+
+virtualenv flask
+flask/bin/pip install flask
