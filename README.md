@@ -1,7 +1,9 @@
 ## virtualenv
 
+```
 sudo apt-get install python-pip
 sudo pip install virtualenv virtualenvwrapper
+```
 
 In .bashrc einfügen:
 
