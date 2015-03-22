@@ -5,7 +5,7 @@ sudo apt-get install python-pip
 sudo pip install virtualenv virtualenvwrapper
 ```
 
-In .bashrc einfügen:
+In `.bashrc` einfügen:
 
 ```
 if [ -f /usr/local/bin/virtualenvwrapper.sh ]; then
@@ -42,6 +42,21 @@ WSGIScriptReloading On
 ```
 
 Das geht noch nicht ganz auf: Jetzt müssten sämtliche REST-Services mit diesem einen Projekt abgehandelt werden. Da muss man bei Bedarf nochmals über die Bücher. Und ohne Parameter wird ein "/" hinzugefügt und Apache meint dann "Not found". 
+
+## Develop mode
+Als erste Zeile in von `run.py`:
+
+```
+#!venv/bin/python
+```
+
+Und zu guter letzt:
+
+```
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
 
 ## Links
 
