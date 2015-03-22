@@ -6,7 +6,7 @@ from geojson import Feature
 
 app = Flask(__name__)
 
-@app.route('/api1/rest/services/height', methods=['GET'])
+@app.route('/api/v1.0/rest/services/height', methods=['GET'])
 def index():
     
 #    easting = request.args.get('easting', '')
@@ -32,29 +32,17 @@ def check_parameters(args):
     easting = args.get('easting', '')
     northing = args.get('northing', '')
     
-    if easting == '':
-        return
-        
-    if northing == '':
+    if easting == '' or  northing == '':
         return
         
     try:
         easting = float(easting)
+        northing = float(northing)        
     except ValueError, e:
-        print e
         return
-
-    try:
-        northing = float(northing)
-    except ValueError, e:
-        print e
-        return        
-
-    x = float(easting)
-    y = float(northing)
         
-    my_point = Point((easting, northing))
-    my_feature = Feature(geometry=my_point, id=1)
+#    my_point = Point((easting, northing))
+#    my_feature = Feature(geometry=my_point, id=1)
     #print my_feature
     
     return {'easting': easting, 'northing': northing}
@@ -64,5 +52,5 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 
-#http://127.0.0.1:5000/api1/rest/services/height?easting=600000&northing=200000
-#http://127.0.0.1:5000/api1/rest/services/height?easting=607885&northing=228280
+#http://127.0.0.1:5000/api/v1.0/rest/services/height?easting=600000&northing=200000
+#http://127.0.0.1:5000/api/v1.0/rest/services/height?easting=607885&northing=228280
