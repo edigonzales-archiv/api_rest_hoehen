@@ -26,7 +26,6 @@ git clone https://edigonzales@bitbucket.org/edigonzales/api_rest_hoehen.git
 virtualenv venv
 source venv/bin/activate
 pip install flask
-pip install geojson
 ```
 
 GDAL kann zickig sein (Ubuntu 10.04 war kein Problem):
@@ -53,7 +52,7 @@ WSGIScriptReloading On
 
 Das geht noch nicht ganz auf: Jetzt müssten sämtliche REST-Services mit diesem einen Projekt abgehandelt werden. Da muss man bei Bedarf nochmals über die Bücher. Und ohne Parameter wird ein "/" hinzugefügt und Apache meint dann "Not found". 
 
-## Develop mode
+## Develop mode (local web server)
 Als erste Zeile in von `run.py`:
 
 ```
@@ -81,7 +80,7 @@ http://w3facility.org/question/python-gdal-package-missing-header-file-when-inst
 http://gis.stackexchange.com/questions/28966/python-gdal-package-missing-header-file-when-installing-via-pip
 
 
-## Achtung
+## Achtung!
 
 * Falls Koordinaten völlig falsch sind, ist auch das Resultat völlig falsch.
 * LV95 = True, falls easting UND northing grösser 2 Mio resp. 1 Mio.
