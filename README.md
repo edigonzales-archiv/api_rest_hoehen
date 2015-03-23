@@ -79,3 +79,9 @@ https://nextdime.wordpress.com/2014/07/03/how-to-set-up-python-development-envir
 
 http://w3facility.org/question/python-gdal-package-missing-header-file-when-installing-via-pip/
 http://gis.stackexchange.com/questions/28966/python-gdal-package-missing-header-file-when-installing-via-pip
+
+
+## Achtung
+
+* Falls Koordinaten völlig falsch sind, ist auch das Resultat völlig falsch.
+* LV95 = True, falls easting UND northing grösser 2 Mio resp. 1 Mio.

@@ -1,14 +1,17 @@
 #!venv/bin/python
 from flask import request
 from flask import Flask
-from geojson import Point
-from geojson import Feature
 from osgeo import gdal
 from osgeo.gdalconst import *
+from osgeo import ogr
+from osgeo import osr
 import struct
 
 DTM_VRT = "/home/stefan/Downloads/dtm/grid/50cm/dtm.vrt"
 DSM_VRT = "/home/stefan/Downloads/dom/grid/50cm/dom.vrt"
+
+S_SRS = "+proj=somerc +lat_0=46.952405555555555N +lon_0=7.439583333333333E +ellps=bessel +x_0=2600000 +y_0=1200000 +towgs84=674.374,15.056,405.346 +units=m +k_0=1 +nadgrids=@null"
+T_SRS = "+proj=somerc +lat_0=46.952405555555555N +lon_0=7.439583333333333E +ellps=bessel +x_0=600000 +y_0=200000 +towgs84=674.374,15.056,405.346 +units=m +units=m +k_0=1 +nadgrids=/home/stefan/Projekte/api_rest_hoehen/chenyx06a.gsb"
 
 app = Flask(__name__)
 
@@ -17,34 +20,30 @@ def height():
     easting = request.args.get('easting', '')
     northing = request.args.get('northing', '')
 
-    # do some basic parameters checks
-    params = check_parameters(request.args)
-    print "params: "  + str(params)
-    
-    # return an empty point feature if easting and/or northing is not set correctly.
-    if not params:
-        result = create_empty_geojson()
+    # do some basic parameters checks and return none
+    # if non-sense coords
+    try:
+        easting, northing = check_parameters(request.args)
+    except TypeError, e:
+        result = create_empty_json()
         return result
 
     # try to figure out if the request is in LV95
-    is_lv95 = check_for_lv95(params)
-    print is_lv95
+    is_lv95 = check_for_lv95(easting, northing)
     
+    # transform coordinate from LV95 to LV03    
     if is_lv95:
-        epsg = "EPSG:2056"
-        # transform coordinate from LV95 to LV03
-        pass
-    else:
-        epsg = "EPSG:21781"
+        easting, northing = lv95tolv03(easting, northing)
         
     # get height from gdal vrt files
-    terrain = get_height(params['easting'], params['northing'], 'dtm')
-    surface = get_height(params['easting'], params['northing'], 'dom')
+    terrain = get_height(easting, northing, 'dtm')
+    surface = get_height(easting, northing, 'dom')
 
     # create geojson output
-    feature = create_geojson(params['easting'], params['northing'], terrain, surface, epsg)
+    feature = create_json(easting, northing, terrain, surface)
 
     return str(feature)
+
 
 def check_parameters(args):
     easting = args.get('easting', '')
@@ -59,19 +58,31 @@ def check_parameters(args):
     except ValueError, e:
         return
 
-    return {'easting': easting, 'northing': northing}
+    return (easting, northing)
 
-def create_empty_geojson():
-    # Cannot create empty geometry with geojson lib.
-    # Let's create it by hand.
-    return '{"geometry":{"coordinates": [], "type": "Point"}, "id": 1, "properties": {"terrain": "None", "surface": "None"}, "type": "Feature"}'
 
-def check_for_lv95(params):
-    easting = params['easting']
-    northing = params['northing']
-    
+def create_empty_json():
+    return '{"terrain": "None", "surface": "None"}'
+
+
+def check_for_lv95(easting, northing):    
     if easting > 2000000 and northing > 1000000:
         return True
+
+
+def lv95tolv03(easting, northing):
+    source = osr.SpatialReference()
+    source.ImportFromProj4(S_SRS)
+
+    target = osr.SpatialReference()
+    target.ImportFromProj4(T_SRS)
+    
+    transform = osr.CoordinateTransformation(source, target)
+    
+    point = ogr.CreateGeometryFromWkt("POINT ("+str(easting)+ " "+str(northing)+")")
+    point.Transform(transform)
+    return (point.GetX(), point.GetY())
+    
 
 def get_height(easting, northing, type):
     if type == 'dtm':
@@ -90,32 +101,31 @@ def get_height(easting, northing, type):
     py = int((my - gt[3]) / gt[5]) #y pixel
 
     if px < 0 or py < 0:
-        return "None"
+        return
     else:
         structval = rb.ReadRaster(px, py, 1, 1, buf_type = gdal.GDT_Float32)
         tuple_of_floats = struct.unpack('f', structval)
         height = float(tuple_of_floats[0])
         # This is a bit heuristic since it depends on how you set no-data value.
         if height <= 0:
-            return "None"
+            return
         return height
 
-def create_geojson(easting, northing, terrain, surface, epsg):
-    
-    epsg ={"properties": {"name": "urn:ogc:def:crs:EPSG::3785"},"type": "name"}
-    
-    point = Point((easting, northing), epsg)
 
+def create_json(easting, northing, terrain, surface):
     properties = {}
-    properties["terrain"] = "%.1f" % terrain
-    properties["surface"] = "%.1f" % surface
     
-    feature = Feature(geometry=point, id=1, properties=properties)
-    print feature
-    #my_feature = Feature(geometry=my_point, id=1)
-    
+    if terrain:
+        properties["terrain"] = "%.1f" % terrain
+    else:
+        properties["terrain"] = "None"
 
-    return feature
+    if surface:
+        properties["surface"] = "%.1f" % surface
+    else:
+        properties["surface"] = "None"
+
+    return properties
 
 
 if __name__ == '__main__':
@@ -127,4 +137,5 @@ if __name__ == '__main__':
 
 #http://127.0.0.1:5000/height?easting=600000&northing=200000
 #http://127.0.0.1:5000/height?easting=607885&northing=228280
+#http://127.0.0.1:5000/height?easting=600000&northing=240000
 #http://127.0.0.1:5000/height?easting=2607885&northing=1228280
