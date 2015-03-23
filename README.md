@@ -29,6 +29,16 @@ pip install flask
 pip install geojson
 ```
 
+GDAL kann zickig sein (Ubuntu 10.04 war kein Problem):
+
+```
+pip install --no-install GDAL
+cd venv/build/GDAL
+python setup.py build_ext --include-dirs=/usr/include/gdal/
+pip install --no-download GDAL
+
+```
+
 ## apache conf
 
 ```
@@ -66,3 +76,6 @@ http://fosshelp.blogspot.in/2014/03/how-to-deploy-flask-application-with.html
 
 http://usrnotes.blogspot.ch/2014/06/python-development-environment-setup-in.html
 https://nextdime.wordpress.com/2014/07/03/how-to-set-up-python-development-environment-ubuntu-14-04/
+
+http://w3facility.org/question/python-gdal-package-missing-header-file-when-installing-via-pip/
+http://gis.stackexchange.com/questions/28966/python-gdal-package-missing-header-file-when-installing-via-pip

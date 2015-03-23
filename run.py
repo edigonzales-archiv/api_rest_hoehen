@@ -3,6 +3,12 @@ from flask import request
 from flask import Flask
 from geojson import Point
 from geojson import Feature
+from osgeo import gdal
+from osgeo.gdalconst import *
+import struct
+
+DTM_VRT = "/home/stefan/Downloads/dtm/grid/50cm/dtm.vrt"
+DSM_VRT = "/home/stefan/Downloads/dom/grid/50cm/dom.vrt"
 
 app = Flask(__name__)
 
@@ -21,20 +27,24 @@ def height():
         return result
 
     # try to figure out if the request is in LV95
-    isLV95 = check_for_lv95(params)
-    print isLV95
+    is_lv95 = check_for_lv95(params)
+    print is_lv95
     
-    if isLV95:
+    if is_lv95:
+        epsg = "EPSG:2056"
         # transform coordinate from LV95 to LV03
         pass
+    else:
+        epsg = "EPSG:21781"
         
-    # get height...
-    
+    # get height from gdal vrt files
+    terrain = get_height(params['easting'], params['northing'], 'dtm')
+    surface = get_height(params['easting'], params['northing'], 'dom')
 
+    # create geojson output
+    feature = create_geojson(params['easting'], params['northing'], terrain, surface, epsg)
 
-    return str(easting)
-
-
+    return str(feature)
 
 def check_parameters(args):
     easting = args.get('easting', '')
@@ -63,23 +73,49 @@ def check_for_lv95(params):
     if easting > 2000000 and northing > 1000000:
         return True
 
+def get_height(easting, northing, type):
+    if type == 'dtm':
+        filename = DTM_VRT
+    else:
+        filename = DSM_VRT
 
+    ds = gdal.Open(filename)
+    gt = ds.GetGeoTransform()
+    rb = ds.GetRasterBand(1)
 
+    mx = float(easting)
+    my = float(northing)
 
-def create_geojson(easting, northing, dtm, dsm):
-    print easting
-    print northing
-    #my_point = Point((easting, northing))
-    #print my_point
-#    my_feature = Feature(geometry=my_point, id=1)
+    px = int((mx - gt[0]) / gt[1]) #x pixel
+    py = int((my - gt[3]) / gt[5]) #y pixel
+
+    if px < 0 or py < 0:
+        return "None"
+    else:
+        structval = rb.ReadRaster(px, py, 1, 1, buf_type = gdal.GDT_Float32)
+        tuple_of_floats = struct.unpack('f', structval)
+        height = float(tuple_of_floats[0])
+        # This is a bit heuristic since it depends on how you set no-data value.
+        if height <= 0:
+            return "None"
+        return height
+
+def create_geojson(easting, northing, terrain, surface, epsg):
+    
+    epsg ={"properties": {"name": "urn:ogc:def:crs:EPSG::3785"},"type": "name"}
+    
+    point = Point((easting, northing), epsg)
+
+    properties = {}
+    properties["terrain"] = "%.1f" % terrain
+    properties["surface"] = "%.1f" % surface
+    
+    feature = Feature(geometry=point, id=1, properties=properties)
+    print feature
     #my_feature = Feature(geometry=my_point, id=1)
     
-    my_point = Point((-3.68, 40.41))    
-    Feature(geometry=my_point)
-    return Feature(geometry=my_point)
 
-
-
+    return feature
 
 
 if __name__ == '__main__':
