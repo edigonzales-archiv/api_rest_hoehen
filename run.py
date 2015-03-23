@@ -1,15 +1,25 @@
 #!venv/bin/python
 from flask import request
 from flask import Flask
+from flask import jsonify
+from flask import json
+from flask import Response
 from osgeo import gdal
 from osgeo.gdalconst import *
 from osgeo import ogr
 from osgeo import osr
 import struct
 
-DTM_VRT = "/home/stefan/Downloads/dtm/grid/50cm/dtm.vrt"
-DSM_VRT = "/home/stefan/Downloads/dom/grid/50cm/dom.vrt"
+#DTM_VRT = "/home/stefan/Downloads/dtm/grid/50cm/dtm.vrt"
+#DSM_VRT = "/home/stefan/Downloads/dom/grid/50cm/dom.vrt"
 
+#DTM_VRT = "/opt/Geodaten/ch/so/kva/hoehen/2014/dtm/grid/50cm/dtm.vrt"
+#DSM_VRT = "/opt/Geodaten/ch/so/kva/hoehen/2014/dom/grid/50cm/dom.vrt"
+
+DTM_VRT = "/home/stefan/Projekte/api_rest_hoehen/dtm.vrt"
+DSM_VRT = "/home/stefan/Projekte/api_rest_hoehen/dom.vrt"
+
+# File path of chenyx06a.gsb hardcoded!
 S_SRS = "+proj=somerc +lat_0=46.952405555555555N +lon_0=7.439583333333333E +ellps=bessel +x_0=2600000 +y_0=1200000 +towgs84=674.374,15.056,405.346 +units=m +k_0=1 +nadgrids=@null"
 T_SRS = "+proj=somerc +lat_0=46.952405555555555N +lon_0=7.439583333333333E +ellps=bessel +x_0=600000 +y_0=200000 +towgs84=674.374,15.056,405.346 +units=m +units=m +k_0=1 +nadgrids=/home/stefan/Projekte/api_rest_hoehen/chenyx06a.gsb"
 
@@ -25,8 +35,9 @@ def height():
     try:
         easting, northing = check_parameters(request.args)
     except TypeError, e:
-        result = create_empty_json()
-        return result
+        data = {"terrain": "None", "surface": "None"}
+        resp = Response(response=json.dumps(data), status=200, mimetype="application/json")
+        return resp
 
     # try to figure out if the request is in LV95
     is_lv95 = check_for_lv95(easting, northing)
@@ -39,11 +50,17 @@ def height():
     terrain = get_height(easting, northing, 'dtm')
     surface = get_height(easting, northing, 'dom')
 
-    # create geojson output
-    feature = create_json(easting, northing, terrain, surface)
-
-    return str(feature)
-
+    # Why does jsonify not work here? Is it a Python version issue?
+    if terrain and surface:
+        #data = jsonify(terrain="%.1f" % terrain, surface="%.1f" % surface)
+        data = {"terrain": "%.1f" % terrain, "surface": "%.1f" % surface}
+    else:
+        #data = jsonify(terrain="None", surface="None")
+        data = {"terrain": "None", "surface": "None"}
+        
+    #resp = Response(response=data, status=200, mimetype="application/json")
+    resp = Response(response=json.dumps(data), status=200, mimetype="application/json")
+    return resp
 
 def check_parameters(args):
     easting = args.get('easting', '')
@@ -59,10 +76,6 @@ def check_parameters(args):
         return
 
     return (easting, northing)
-
-
-def create_empty_json():
-    return '{"terrain": "None", "surface": "None"}'
 
 
 def check_for_lv95(easting, northing):    
@@ -104,29 +117,18 @@ def get_height(easting, northing, type):
         return
     else:
         structval = rb.ReadRaster(px, py, 1, 1, buf_type = gdal.GDT_Float32)
-        tuple_of_floats = struct.unpack('f', structval)
-        height = float(tuple_of_floats[0])
-        # This is a bit heuristic since it depends on how you set no-data value.
-        if height <= 0:
+        # Is this THE way to handle out of range errors correctly?
+        # It still throws an error on console...
+        if structval:
+            tuple_of_floats = struct.unpack('f', structval)
+            height = float(tuple_of_floats[0])
+            # This is a bit heuristic since it depends on how you set no-data value.
+            if height <= 0:
+                return
+            return height
+        else:
             return
-        return height
-
-
-def create_json(easting, northing, terrain, surface):
-    properties = {}
-    
-    if terrain:
-        properties["terrain"] = "%.1f" % terrain
-    else:
-        properties["terrain"] = "None"
-
-    if surface:
-        properties["surface"] = "%.1f" % surface
-    else:
-        properties["surface"] = "None"
-
-    return properties
-
+            
 
 if __name__ == '__main__':
     app.run(debug=True)
@@ -134,6 +136,7 @@ if __name__ == '__main__':
 #http://www.catais.org/api/v1.0/rest/services/height?easting=600000&northing=200000
 #http://www.catais.org/api/v1.0/rest/services/height?easting=607885&northing=228280
 #http://www.catais.org/api/v1.0/rest/services/height?easting=2607885&northing=1228280
+#http://www.catais.org/api/v1.0/rest/services/height?easting=700000&northing=250000
 
 #http://127.0.0.1:5000/height?easting=600000&northing=200000
 #http://127.0.0.1:5000/height?easting=607885&northing=228280
